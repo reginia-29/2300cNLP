@@ -1,0 +1,785 @@
+<title>Steady Check-in</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one calm column (max 960px) with a sticky top bar; the horizon (sun rising with mood) is the single signature motif. */
+:root {
+  --bg: #F1F5F4;
+  --surface: #FFFFFF;
+  --ink: #1C2A2D;
+  --muted: #56686B;
+  --line: #D6E0DE;
+  --accent: #2C6B64;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEBE8;
+  --sun: #E39A2D;
+  --sky-top: #D7E6EA;
+  --sky-low: #F6EBDA;
+  --ground: #C9D8D4;
+  --care: #9A3D33;
+  --care-soft: #F7E4E0;
+  --m1: #7D8C9A; --m2: #93A8B0; --m3: #A9C3B5; --m4: #E7C27A; --m5: #E39A2D;
+  --font-display: "Young Serif", Georgia, "Times New Roman", serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --on-mood: #13201F;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101819; --surface: #172224; --ink: #E4EEEC; --muted: #9BAEAB; --line: #2A3B3E;
+    --accent: #72C3B7; --accent-ink: #0E1A1B; --accent-soft: #1E3533;
+    --sun: #F0B357; --sky-top: #1A2B33; --sky-low: #33302A; --ground: #22383A;
+    --care: #F0A196; --care-soft: #3A2220;
+    --m1: #5E6E7A; --m2: #6F8790; --m3: #7FA593; --m4: #C9A45E; --m5: #F0B357;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101819; --surface: #172224; --ink: #E4EEEC; --muted: #9BAEAB; --line: #2A3B3E;
+  --accent: #72C3B7; --accent-ink: #0E1A1B; --accent-soft: #1E3533;
+  --sun: #F0B357; --sky-top: #1A2B33; --sky-low: #33302A; --ground: #22383A;
+  --care: #F0A196; --care-soft: #3A2220;
+  --m1: #5E6E7A; --m2: #6F8790; --m3: #7FA593; --m4: #C9A45E; --m5: #F0B357;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.3rem); }
+h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.wrap {
+  max-width: 960px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+}
+.topbar .wrap { display: flex; align-items: center; gap: 12px; padding-block: 10px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 1.3rem; color: var(--ink); text-decoration: none; margin-right: auto; }
+.brand svg { width: 28px; height: 28px; }
+nav.main { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.main a { text-decoration: none; color: var(--muted); padding: 6px 12px; border-radius: 999px; font-weight: 500; font-size: 0.95rem; }
+nav.main a[aria-current="page"] { background: var(--accent-soft); color: var(--ink); }
+.help-btn {
+  text-decoration: none; font-weight: 600; font-size: 0.9rem;
+  color: var(--care); border: 1.5px solid var(--care); padding: 5px 12px; border-radius: 999px;
+}
+.help-btn:hover { background: var(--care-soft); }
+
+main { padding-block: 28px 56px; }
+section.view, .view { display: grid; gap: 28px; }
+.view > * { min-width: 0; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: inherit; font-weight: 600; font-size: 1rem; cursor: pointer;
+  padding: 12px 22px; border-radius: 999px; border: 1.5px solid transparent; text-decoration: none;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { border-color: var(--accent); }
+.btn.small { padding: 7px 14px; font-size: 0.9rem; }
+.btn.danger { background: transparent; color: var(--care); border-color: var(--care); }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; min-width: 0; }
+.eyebrow { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+.fine { font-size: 0.86rem; color: var(--muted); }
+
+/* Horizon */
+.horizon { width: 100%; height: auto; display: block; border-radius: var(--radius); }
+.horizon .sky-a { stop-color: var(--sky-top); }
+.horizon .sky-b { stop-color: var(--sky-low); }
+.horizon .ground { fill: var(--ground); }
+.horizon .sun { fill: var(--sun); transition: transform 700ms cubic-bezier(.3,.7,.2,1); }
+.horizon .ray { stroke: var(--sun); stroke-width: 3; stroke-linecap: round; opacity: 0; transition: opacity 500ms; }
+.horizon.bright .ray { opacity: .55; }
+
+/* Landing */
+.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: center; padding-top: 12px; }
+.hero > * { min-width: 0; }
+.hero p.lead { font-size: 1.15rem; color: var(--muted); margin-top: 14px; max-width: 34em; }
+.hero .row { margin-top: 24px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.step { display: grid; gap: 8px; align-content: start; }
+.step .num { font-family: var(--font-display); font-size: 1.6rem; color: var(--accent); }
+.promise { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.promise ul { margin: 10px 0 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.notice { border-left: 3px solid var(--line); padding: 4px 0 4px 14px; }
+
+/* Check-in */
+.checkin { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.checkin > * { min-width: 0; }
+.span-2 { grid-column: 1 / -1; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { font-weight: 600; margin-bottom: 10px; padding: 0; }
+.moods { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+.moods label { position: relative; }
+.moods input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.moods span {
+  display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; font-size: 0.92rem; cursor: pointer;
+}
+.moods span i { width: 14px; height: 14px; border-radius: 50%; display: block; }
+.moods input:checked + span { border-color: var(--accent); background: var(--accent-soft); }
+.moods input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.slider { display: grid; gap: 6px; }
+.slider .top { display: flex; justify-content: space-between; font-weight: 600; }
+.slider output { color: var(--accent); font-variant-numeric: tabular-nums; }
+.slider .ends { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag {
+  font: inherit; font-size: 0.92rem; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1.5px solid var(--line);
+}
+.tag[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+textarea, input[type="number"] {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+textarea { min-height: 96px; resize: vertical; }
+.sleep { display: flex; align-items: center; gap: 10px; }
+.sleep input { max-width: 110px; }
+
+/* Care + crisis */
+.care {
+  background: var(--care-soft); border: 1.5px solid var(--care); border-radius: var(--radius);
+  padding: 16px 18px; display: grid; gap: 8px;
+}
+.care strong { color: var(--care); }
+.example-bar {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between;
+  background: var(--accent-soft); border-radius: 12px; padding: 10px 16px; font-size: 0.93rem;
+}
+
+/* History */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.stat .val { font-family: var(--font-display); font-size: 1.9rem; font-variant-numeric: tabular-nums; }
+.chart-box { overflow-x: auto; }
+.chart { width: 100%; min-width: 520px; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .lbl { fill: var(--muted); font-size: 12px; font-family: var(--font-body); }
+.chart .area { fill: var(--accent); opacity: .12; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.chart .dot.end { fill: var(--accent); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two > * { min-width: 0; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
+.cal .dow { font-size: 0.75rem; color: var(--muted); text-align: center; font-weight: 600; }
+.cal .day {
+  aspect-ratio: 1; max-width: 100%; border-radius: 8px; display: grid; place-items: center;
+  font-size: 0.8rem; font-variant-numeric: tabular-nums; background: var(--bg); color: var(--muted);
+}
+.cal .day.has { color: var(--on-mood); font-weight: 600; }
+.cal .day.today { outline: 2px solid var(--ink); outline-offset: -2px; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: 0.8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.insights { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+.insights li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.chip { font-size: 0.75rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.chip.up { background: var(--accent-soft); color: var(--accent); }
+.chip.down { background: var(--care-soft); color: var(--care); }
+.entries { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+.entries li { display: grid; grid-template-columns: 92px 1fr; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.entries li:first-child { border-top: 0; }
+.entries .when { font-weight: 600; font-size: 0.9rem; }
+.entries .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.entries .meta span { font-size: 0.78rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); }
+.mood-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+/* Help */
+.resources { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.res { display: grid; gap: 8px; align-content: start; }
+.res .num { font-family: var(--font-display); font-size: 1.5rem; user-select: all; }
+
+footer { border-top: 1px solid var(--line); }
+footer .wrap { padding-block: 20px 28px; display: grid; gap: 6px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-weight: 600;
+  z-index: 20; max-width: calc(100% - 32px);
+}
+.confirm { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+
+@media (max-width: 760px) {
+  nav.main { order: 3; width: 100%; justify-content: space-between; }
+  .topbar .wrap { gap: 6px 12px; padding-block: 8px; }
+  .hero, .checkin, .two, .promise, .resources { grid-template-columns: 1fr; }
+  .steps, .stats { grid-template-columns: 1fr; }
+  .moods span { font-size: 0.8rem; }
+  .entries li { grid-template-columns: 1fr; gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .horizon .sun, .horizon .ray { transition: none; }
+}
+</style>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#home" aria-label="Steady home">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="15" r="7" fill="var(--sun)"/><rect x="2" y="17" width="24" height="9" fill="var(--bg)"/><line x1="3" y1="17.5" x2="25" y2="17.5" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/></svg>
+      Steady
+    </a>
+    <nav class="main" aria-label="Main">
+      <a href="#home" data-nav="home">Home</a>
+      <a href="#checkin" data-nav="checkin">Check in</a>
+      <a href="#history" data-nav="history">My patterns</a>
+    </nav>
+    <a class="help-btn" href="#help" data-nav="help">Need help now?</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- LANDING -->
+  <section class="view" id="view-home" aria-labelledby="home-h">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">Daily mental wellness check-in</p>
+        <h1 id="home-h">Notice how you're really doing.</h1>
+        <p class="lead">A two-minute check-in that turns vague feelings into patterns you can see. Track your mood, energy, and what's going on, then spot what helps and what drains you.</p>
+        <div class="row">
+          <a class="btn primary" href="#checkin">Start today's check-in</a>
+          <a class="btn ghost" href="#history">See an example</a>
+        </div>
+      </div>
+      <svg class="horizon" id="hero-horizon" viewBox="0 0 600 340" role="img" aria-label="A sun rising over a calm horizon"></svg>
+    </div>
+
+    <div>
+      <p class="eyebrow">How it works</p>
+      <div class="steps" style="margin-top:12px">
+        <div class="panel step">
+          <span class="num">1</span>
+          <h3>Check in</h3>
+          <p class="muted">Pick a mood from Rough to Great and slide your energy and stress. That's the whole required part.</p>
+        </div>
+        <div class="panel step">
+          <span class="num">2</span>
+          <h3>Add context</h3>
+          <p class="muted">Tap what shaped your day, like sleep, exercise, or work stress. Add a note if you want to.</p>
+        </div>
+        <div class="panel step">
+          <span class="num">3</span>
+          <h3>See your patterns</h3>
+          <p class="muted">After a week or two, Steady shows trends and which tags line up with better or harder days.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="promise">
+      <div class="panel">
+        <h3>Private by design</h3>
+        <ul class="muted">
+          <li>Your check-ins stay in this browser in this prototype.</li>
+          <li>No ads, and no selling or sharing your data.</li>
+          <li>Copy or delete everything at any time.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Gentle, not pushy</h3>
+        <ul class="muted">
+          <li>No streaks to lose and no guilt for missed days.</li>
+          <li>Insights are observations from your own entries.</li>
+          <li>Support resources are always one tap away.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="notice fine">Steady is a self-reflection tool. It is not a medical device and does not diagnose, treat, or replace care from a licensed professional. If you are in crisis, <a href="#help">find help now</a>.</p>
+  </section>
+
+  <!-- CHECK-IN -->
+  <section class="view" id="view-checkin" aria-labelledby="ci-h" hidden>
+    <div>
+      <p class="eyebrow" id="ci-date">Today</p>
+      <h2 id="ci-h">How are you feeling today?</h2>
+      <p class="muted" id="ci-sub" style="margin-top:6px">Take a breath. There are no wrong answers.</p>
+    </div>
+
+    <form id="ci-form" class="checkin" novalidate>
+      <div class="panel span-2">
+        <fieldset>
+          <legend>Mood</legend>
+          <svg class="horizon" id="ci-horizon" viewBox="0 0 600 200" aria-hidden="true"></svg>
+          <div class="moods" id="moods" role="radiogroup" aria-label="Mood"></div>
+        </fieldset>
+      </div>
+
+      <div class="panel slider">
+        <div class="top"><label for="energy">Energy</label><output id="energy-out" for="energy">3 of 5</output></div>
+        <input type="range" id="energy" min="1" max="5" step="1" value="3">
+        <div class="ends"><span>Drained</span><span>Charged</span></div>
+      </div>
+      <div class="panel slider">
+        <div class="top"><label for="stress">Stress</label><output id="stress-out" for="stress">3 of 5</output></div>
+        <input type="range" id="stress" min="1" max="5" step="1" value="3">
+        <div class="ends"><span>Calm</span><span>Overwhelmed</span></div>
+      </div>
+
+      <div class="panel">
+        <label for="sleep" style="font-weight:600">Sleep last night</label>
+        <div class="sleep" style="margin-top:10px">
+          <input type="number" id="sleep" min="0" max="16" step="0.5" value="7" inputmode="decimal">
+          <span class="muted">hours</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <fieldset>
+          <legend>What's shaping your day?</legend>
+          <div class="tags" id="tags"></div>
+        </fieldset>
+      </div>
+
+      <div class="panel span-2">
+        <label for="note" style="font-weight:600">Anything on your mind? <span class="muted" style="font-weight:400">(optional)</span></label>
+        <textarea id="note" maxlength="500" placeholder="A sentence is plenty." style="margin-top:10px"></textarea>
+        <div id="note-care" class="care" style="margin-top:12px" hidden>
+          <strong>It sounds like things may be really hard right now.</strong>
+          <p>You don't have to go through this alone. In the US you can call or text <b>988</b> any time to reach the Suicide &amp; Crisis Lifeline. If you might act on thoughts of harming yourself, call <b>911</b> or go to the nearest emergency room.</p>
+          <p><a href="#help">See all support options</a></p>
+        </div>
+      </div>
+
+      <div class="span-2 row">
+        <button type="submit" class="btn primary" id="save-btn">Save check-in</button>
+        <span class="fine" id="save-hint">Pick a mood to save.</span>
+      </div>
+    </form>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history" aria-labelledby="hi-h" hidden>
+    <div>
+      <p class="eyebrow">Last 30 days</p>
+      <h2 id="hi-h">Your patterns</h2>
+    </div>
+    <div class="example-bar" id="example-bar" hidden>
+      <span>You're looking at <b>example data</b> so you can see how this works. Your own check-ins replace it.</span>
+      <button class="btn ghost small" type="button" id="clear-examples">Clear examples</button>
+    </div>
+    <div class="care" id="low-care" hidden>
+      <strong>Your last few check-ins have been low.</strong>
+      <p>That's worth paying attention to, and you don't have to handle it alone. Talking with someone you trust, your doctor, or a counselor can help. If you're struggling right now, call or text 988 in the US.</p>
+      <p><a href="#help">See support options</a></p>
+    </div>
+    <div id="hi-empty" class="panel" hidden>
+      <h3>No check-ins yet</h3>
+      <p class="muted" style="margin-top:6px">Your trends and patterns will show up here after your first few check-ins.</p>
+      <div class="row" style="margin-top:14px"><a class="btn primary" href="#checkin">Start today's check-in</a></div>
+    </div>
+    <div id="hi-body" class="view" style="gap:16px">
+      <div class="stats" id="stats"></div>
+      <div class="panel">
+        <h3>Mood over time</h3>
+        <div class="chart-box" style="margin-top:12px"><svg class="chart" id="chart" viewBox="0 0 640 230" role="img" aria-label="Line chart of mood over the last 30 days"></svg></div>
+      </div>
+      <div class="two">
+        <div class="panel">
+          <h3 id="cal-title">This month</h3>
+          <div class="cal" id="cal"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="panel">
+          <h3>What lines up with your mood</h3>
+          <ul class="insights" id="insights"></ul>
+          <p class="fine" style="margin-top:14px">These are patterns in your own entries, not medical advice. A pattern doesn't prove one thing causes another.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recent check-ins</h3>
+        <ul class="entries" id="entries"></ul>
+      </div>
+      <div class="panel">
+        <h3>Your data</h3>
+        <p class="muted" style="margin-top:6px">Your check-ins are stored only in this browser.</p>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost small" type="button" id="copy-data">Copy my data</button>
+          <button class="btn danger small" type="button" id="delete-data">Delete all my data</button>
+        </div>
+        <div class="confirm" id="delete-confirm" hidden>
+          <span>Delete every check-in? This can't be undone.</span>
+          <button class="btn danger small" type="button" id="delete-yes">Yes, delete</button>
+          <button class="btn ghost small" type="button" id="delete-no">Cancel</button>
+        </div>
+        <textarea id="data-out" readonly hidden style="margin-top:12px" aria-label="Your data as JSON"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- HELP -->
+  <section class="view" id="view-help" aria-labelledby="help-h" hidden>
+    <div>
+      <p class="eyebrow">Support, any time</p>
+      <h2 id="help-h">If you need help right now</h2>
+      <p class="muted" style="margin-top:8px; max-width:40em">If you are in immediate danger or might act on thoughts of harming yourself, call your local emergency number now. These services are free and confidential.</p>
+    </div>
+    <div class="resources">
+      <div class="panel res">
+        <p class="eyebrow">United States · call or text</p>
+        <h3>988 Suicide &amp; Crisis Lifeline</h3>
+        <p class="num">988</p>
+        <p class="muted">24/7 support for anyone in emotional distress or suicidal crisis.</p>
+        <div class="row"><button class="btn ghost small" type="button" data-copy="988">Copy number</button><a href="https://988lifeline.org" target="_blank" rel="noopener">988lifeline.org</a></div>
+      </div>
+      <div class="panel res">
+        <p class="eyebrow">United States · text</p>
+        <h3>Crisis Text Line</h3>
+        <p class="num">Text HOME to 741741</p>
+        <p class="muted">Text with a trained crisis counselor, 24/7.</p>
+        <div class="row"><button class="btn ghost small" type="button" data-copy="741741">Copy number</button><a href="https://www.crisistextline.org" target="_blank" rel="noopener">crisistextline.org</a></div>
+      </div>
+      <div class="panel res">
+        <p class="eyebrow">Emergency</p>
+        <h3>Immediate danger</h3>
+        <p class="num">911</p>
+        <p class="muted">Or your local emergency number, or go to the nearest emergency room.</p>
+      </div>
+      <div class="panel res">
+        <p class="eyebrow">Outside the US</p>
+        <h3>Find a helpline near you</h3>
+        <p class="muted">Free, confidential helplines in many countries. In the UK and Ireland, Samaritans answer on <b style="user-select:all">116 123</b>.</p>
+        <div class="row"><a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Not in crisis, but struggling?</h3>
+      <p class="muted" style="margin-top:6px">Consider talking with your doctor or a licensed therapist. In the US, the SAMHSA National Helpline (<b style="user-select:all">1-800-662-4357</b>) offers free referrals to local treatment and support, 24/7.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="fine">Steady is a prototype self-reflection tool, not a medical service. It does not provide diagnosis or treatment. If you're in crisis, call or text 988 (US) or your local emergency number.</p>
+    <p class="fine">Prototype · data stays in your browser</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  const MOODS = [
+    { v: 1, l: "Rough" }, { v: 2, l: "Low" }, { v: 3, l: "Okay" }, { v: 4, l: "Good" }, { v: 5, l: "Great" }
+  ];
+  const TAGS = ["Slept well", "Poor sleep", "Exercise", "Time outside", "Saw friends", "Alone time",
+    "Work stress", "Family", "Healthy meals", "Lots of screen time", "Caffeine", "Therapy"];
+  const KEY = "steady.v1";
+  const CRISIS = /(suicid|kill myself|end my life|end it all|want to die|self[- ]?harm|hurt myself|no reason to live|better off without me)/i;
+  const $ = (s) => document.querySelector(s);
+  const moodVar = (v) => `var(--m${v})`;
+  const moodLabel = (v) => MOODS[Math.max(0, Math.min(4, Math.round(v) - 1))].l;
+
+  // ---------- dates ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const fmt = (d, o) => d.toLocaleDateString(undefined, o);
+
+  // ---------- store ----------
+  function seed() {
+    let s = 7;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const entries = [];
+    const t = today();
+    for (let i = 27; i >= 1; i--) {
+      if ([25, 19, 12, 6].includes(i)) continue; // a few missed days
+      const d = addDays(t, -i);
+      const tags = [];
+      const pick = (tag, p) => { if (rnd() < p) tags.push(tag); };
+      const weekend = d.getDay() === 0 || d.getDay() === 6;
+      const sleep = Math.round((5.5 + rnd() * 3) * 2) / 2;
+      tags.push(sleep >= 7.5 ? "Slept well" : sleep < 6.5 ? "Poor sleep" : null);
+      pick("Exercise", weekend ? 0.6 : 0.35);
+      pick("Time outside", weekend ? 0.7 : 0.3);
+      pick("Saw friends", weekend ? 0.6 : 0.2);
+      pick("Work stress", weekend ? 0.05 : 0.55);
+      pick("Caffeine", 0.5);
+      pick("Lots of screen time", 0.35);
+      pick("Family", 0.25);
+      const clean = tags.filter(Boolean);
+      let m = 3 + (rnd() - 0.5) * 1.2;
+      if (clean.includes("Exercise")) m += 0.6;
+      if (clean.includes("Time outside")) m += 0.4;
+      if (clean.includes("Saw friends")) m += 0.5;
+      if (clean.includes("Slept well")) m += 0.5;
+      if (clean.includes("Poor sleep")) m -= 0.8;
+      if (clean.includes("Work stress")) m -= 0.7;
+      if (clean.includes("Lots of screen time")) m -= 0.3;
+      const mood = Math.max(1, Math.min(5, Math.round(m)));
+      const stress = Math.max(1, Math.min(5, Math.round(3 + (clean.includes("Work stress") ? 1.2 : -0.5) + (rnd() - 0.5))));
+      const energy = Math.max(1, Math.min(5, Math.round(mood + (sleep - 7) * 0.5 + (rnd() - 0.5))));
+      const notes = {
+        1: "Long day. Didn't have much left by the evening.",
+        2: "Tired and a bit flat. Early night tonight.",
+        4: "Walk at lunch helped a lot.",
+        5: "Dinner with friends. Felt like myself again."
+      };
+      entries.push({ date: iso(d), mood, energy, stress, sleep, tags: clean, note: rnd() < 0.45 ? (notes[mood] || "") : "" });
+    }
+    return { examples: true, entries };
+  }
+  let state;
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || !Array.isArray(state.entries)) state = seed();
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  const sorted = () => state.entries.slice().sort((a, b) => a.date.localeCompare(b.date));
+
+  // ---------- toast ----------
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2600);
+  }
+
+  // ---------- horizon ----------
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, parent) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function buildHorizon(svg, id, w, h, r) {
+    const horizonY = h * 0.72;
+    const defs = el("defs", {}, svg);
+    const g = el("linearGradient", { id: id + "-sky", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    el("stop", { offset: "0", class: "sky-a" }, g);
+    el("stop", { offset: "1", class: "sky-b" }, g);
+    const clip = el("clipPath", { id: id + "-clip" }, defs);
+    el("rect", { x: 0, y: 0, width: w, height: horizonY }, clip);
+    el("rect", { x: 0, y: 0, width: w, height: h, fill: `url(#${id}-sky)` }, svg);
+    const sunG = el("g", { "clip-path": `url(#${id}-clip)` }, svg);
+    const sun = el("g", { class: "sun" }, sunG);
+    const cx = w / 2;
+    for (let i = 0; i < 9; i++) {
+      const a = Math.PI + (i * Math.PI) / 8;
+      el("line", { class: "ray", x1: cx + Math.cos(a) * (r + 12), y1: horizonY + Math.sin(a) * (r + 12),
+        x2: cx + Math.cos(a) * (r + 30), y2: horizonY + Math.sin(a) * (r + 30) }, sun);
+    }
+    el("circle", { cx, cy: horizonY, r }, sun);
+    el("rect", { class: "ground", x: 0, y: horizonY, width: w, height: h - horizonY }, svg);
+    el("path", { class: "ground", d: `M0 ${horizonY} Q ${w * 0.25} ${horizonY - 14} ${w * 0.5} ${horizonY} T ${w} ${horizonY - 6} V ${h} H 0 Z`, opacity: 0.6 }, svg);
+    return {
+      set(level) { // level 0..5, 0 = below horizon
+        const rise = (horizonY - r * 0.2) * 0.85 * (level / 5);
+        sun.style.transform = `translateY(${r * 0.75 - rise}px)`;
+        svg.classList.toggle("bright", level >= 4);
+      }
+    };
+  }
+  const heroH = buildHorizon($("#hero-horizon"), "hero", 600, 340, 62);
+  const ciH = buildHorizon($("#ci-horizon"), "ci", 600, 200, 40);
+  heroH.set(0); ciH.set(0);
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  requestAnimationFrame(() => setTimeout(() => heroH.set(4), reduced ? 0 : 250));
+
+  // ---------- check-in form ----------
+  const moodsEl = $("#moods");
+  MOODS.forEach((m) => {
+    const lab = document.createElement("label");
+    lab.innerHTML = `<input type="radio" name="mood" id="mood-${m.v}" value="${m.v}"><span><i style="background:${moodVar(m.v)}"></i>${m.l}</span>`;
+    moodsEl.appendChild(lab);
+  });
+  const tagsEl = $("#tags");
+  TAGS.forEach((t, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tag"; b.id = "tag-" + i; b.textContent = t; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true"));
+    tagsEl.appendChild(b);
+  });
+  const selectedMood = () => { const c = document.querySelector('input[name="mood"]:checked'); return c ? Number(c.value) : null; };
+  function updateMoodUI() {
+    const m = selectedMood();
+    ciH.set(m || 0);
+    $("#save-hint").textContent = m ? `Feeling ${moodLabel(m).toLowerCase()} today.` : "Pick a mood to save.";
+  }
+  moodsEl.addEventListener("change", updateMoodUI);
+  ["energy", "stress"].forEach((id) => {
+    const i = $("#" + id), o = $("#" + id + "-out");
+    i.addEventListener("input", () => (o.textContent = `${i.value} of 5`));
+  });
+  $("#note").addEventListener("input", (e) => ($("#note-care").hidden = !CRISIS.test(e.target.value)));
+
+  function loadForm() {
+    const key = iso(today());
+    const existing = state.entries.find((e) => e.date === key && !state.examples);
+    $("#ci-date").textContent = fmt(today(), { weekday: "long", month: "long", day: "numeric" });
+    $("#ci-h").textContent = existing ? "Update today's check-in" : "How are you feeling today?";
+    $("#ci-sub").textContent = existing ? "You already checked in today. Change anything that's shifted." : "Take a breath. There are no wrong answers.";
+    const e = existing || { mood: null, energy: 3, stress: 3, sleep: 7, tags: [], note: "" };
+    document.querySelectorAll('input[name="mood"]').forEach((r) => (r.checked = Number(r.value) === e.mood));
+    $("#energy").value = e.energy; $("#energy-out").textContent = `${e.energy} of 5`;
+    $("#stress").value = e.stress; $("#stress-out").textContent = `${e.stress} of 5`;
+    $("#sleep").value = e.sleep;
+    tagsEl.querySelectorAll(".tag").forEach((b) => b.setAttribute("aria-pressed", e.tags.includes(b.textContent) ? "true" : "false"));
+    $("#note").value = e.note; $("#note-care").hidden = !CRISIS.test(e.note);
+    updateMoodUI();
+  }
+
+  $("#ci-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const mood = selectedMood();
+    if (!mood) { $("#save-hint").textContent = "Choose a mood above, then save."; moodsEl.querySelector("input").focus(); return; }
+    let sleep = parseFloat($("#sleep").value);
+    if (isNaN(sleep)) sleep = null; else sleep = Math.max(0, Math.min(16, sleep));
+    const entry = {
+      date: iso(today()), mood,
+      energy: Number($("#energy").value), stress: Number($("#stress").value), sleep,
+      tags: [...tagsEl.querySelectorAll('.tag[aria-pressed="true"]')].map((b) => b.textContent),
+      note: $("#note").value.trim()
+    };
+    if (state.examples) state = { examples: false, entries: [] };
+    state.entries = state.entries.filter((e) => e.date !== entry.date).concat(entry);
+    persist();
+    toast("Check-in saved");
+    location.hash = CRISIS.test(entry.note) ? "help" : "history";
+  });
+
+  // ---------- history ----------
+  function avg(a) { return a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0; }
+  function renderHistory() {
+    const all = sorted();
+    const start = addDays(today(), -29);
+    const recent = all.filter((e) => parse(e.date) >= start);
+    $("#example-bar").hidden = !state.examples;
+    const empty = all.length === 0;
+    $("#hi-empty").hidden = !empty; $("#hi-body").hidden = empty;
+    const last3 = all.slice(-3);
+    $("#low-care").hidden = !(last3.length === 3 && last3.every((e) => e.mood <= 2));
+    if (empty) return;
+
+    // stats
+    const counts = {};
+    recent.forEach((e) => e.tags.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
+    const topTag = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    const am = avg(recent.map((e) => e.mood));
+    const sleeps = recent.map((e) => e.sleep).filter((x) => x != null);
+    $("#stats").innerHTML = `
+      <div class="panel stat"><p class="eyebrow">Check-ins</p><p class="val">${recent.length}<span class="muted" style="font-size:1rem"> of 30 days</span></p></div>
+      <div class="panel stat"><p class="eyebrow">Average mood</p><p class="val">${recent.length ? moodLabel(am) : "–"}<span class="muted" style="font-size:1rem"> ${recent.length ? am.toFixed(1) + " / 5" : ""}</span></p></div>
+      <div class="panel stat"><p class="eyebrow">Average sleep</p><p class="val">${sleeps.length ? avg(sleeps).toFixed(1) : "–"}<span class="muted" style="font-size:1rem"> hours</span></p>${topTag ? `<p class="fine">Most tagged: ${topTag[0]}</p>` : ""}</div>`;
+
+    // chart
+    const svg = $("#chart"); svg.innerHTML = "";
+    const W = 640, H = 230, L = 58, R = 18, T = 14, B = 30;
+    const x = (d) => L + ((parse(d) - start) / 864e5) * ((W - L - R) / 29);
+    const y = (m) => T + (5 - m) * ((H - T - B) / 4);
+    MOODS.forEach((m) => {
+      el("line", { class: "grid", x1: L, x2: W - R, y1: y(m.v), y2: y(m.v) }, svg);
+      const t = el("text", { class: "lbl", x: L - 10, y: y(m.v) + 4, "text-anchor": "end" }, svg); t.textContent = m.l;
+    });
+    [0, 15, 29].forEach((i) => {
+      const d = addDays(start, i);
+      const t = el("text", { class: "lbl", x: L + i * ((W - L - R) / 29), y: H - 8, "text-anchor": i === 0 ? "start" : i === 29 ? "end" : "middle" }, svg);
+      t.textContent = i === 29 ? "Today" : fmt(d, { month: "short", day: "numeric" });
+    });
+    if (recent.length) {
+      const pts = recent.map((e) => [x(e.date), y(e.mood)]);
+      const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+      el("path", { class: "area", d: `${line} L ${pts[pts.length - 1][0]} ${y(1)} L ${pts[0][0]} ${y(1)} Z` }, svg);
+      el("path", { class: "line", d: line }, svg);
+      pts.forEach((p, i) => el("circle", { class: "dot" + (i === pts.length - 1 ? " end" : ""), cx: p[0], cy: p[1], r: i === pts.length - 1 ? 5.5 : 3.5 }, svg));
+    }
+
+    // calendar
+    const t0 = today();
+    const first = new Date(t0.getFullYear(), t0.getMonth(), 1);
+    const days = new Date(t0.getFullYear(), t0.getMonth() + 1, 0).getDate();
+    $("#cal-title").textContent = fmt(first, { month: "long", year: "numeric" });
+    const byDate = Object.fromEntries(all.map((e) => [e.date, e]));
+    let html = ["S", "M", "T", "W", "T", "F", "S"].map((d) => `<div class="dow" aria-hidden="true">${d}</div>`).join("");
+    for (let i = 0; i < first.getDay(); i++) html += "<div></div>";
+    for (let d = 1; d <= days; d++) {
+      const key = iso(new Date(t0.getFullYear(), t0.getMonth(), d));
+      const e = byDate[key];
+      const isToday = key === iso(t0);
+      html += `<div class="day${e ? " has" : ""}${isToday ? " today" : ""}" ${e ? `style="background:${moodVar(e.mood)}"` : ""} title="${e ? moodLabel(e.mood) : "No check-in"}">${d}</div>`;
+    }
+    $("#cal").innerHTML = html;
+    $("#legend").innerHTML = MOODS.map((m) => `<span><i style="background:${moodVar(m.v)}"></i>${m.l}</span>`).join("");
+
+    // insights
+    const ins = [];
+    const tagSet = new Set(all.flatMap((e) => e.tags));
+    tagSet.forEach((t) => {
+      const w = all.filter((e) => e.tags.includes(t)), wo = all.filter((e) => !e.tags.includes(t));
+      if (w.length >= 3 && wo.length >= 3) ins.push({ t, d: avg(w.map((e) => e.mood)) - avg(wo.map((e) => e.mood)), a: avg(w.map((e) => e.mood)), b: avg(wo.map((e) => e.mood)), n: w.length });
+    });
+    ins.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    const shown = ins.filter((i) => Math.abs(i.d) >= 0.3).slice(0, 4);
+    $("#insights").innerHTML = shown.length ? shown.map((i) => `
+      <li><span class="chip ${i.d > 0 ? "up" : "down"}">${i.d > 0 ? "Better days" : "Harder days"}</span>
+      <p>On days you tagged <b>${i.t}</b>, your mood averaged <b>${i.a.toFixed(1)}</b>, compared with ${i.b.toFixed(1)} on other days <span class="muted">(${i.n} check-ins)</span>.</p></li>`).join("")
+      : `<li style="display:block" class="muted">Keep checking in. Patterns appear once a tag shows up on at least 3 days.</li>`;
+
+    // entries
+    $("#entries").innerHTML = all.slice(-7).reverse().map((e) => `
+      <li><div class="when">${fmt(parse(e.date), { weekday: "short", month: "short", day: "numeric" })}</div>
+      <div><div><span class="mood-dot" style="background:${moodVar(e.mood)}"></span><b>${moodLabel(e.mood)}</b>
+      <span class="muted"> · energy ${e.energy}/5 · stress ${e.stress}/5${e.sleep != null ? ` · ${e.sleep}h sleep` : ""}</span></div>
+      ${e.note ? `<p style="margin-top:4px">${e.note.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))}</p>` : ""}
+      ${e.tags.length ? `<div class="meta">${e.tags.map((t) => `<span>${t}</span>`).join("")}</div>` : ""}</div></li>`).join("");
+  }
+
+  $("#clear-examples").addEventListener("click", () => { state = { examples: false, entries: [] }; persist(); renderHistory(); toast("Example data cleared"); });
+  $("#copy-data").addEventListener("click", () => {
+    const text = JSON.stringify(sorted(), null, 2);
+    const out = $("#data-out");
+    const fallback = () => { out.value = text; out.hidden = false; out.select(); toast("Select the text and copy it"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Copied your data"), fallback);
+    else fallback();
+  });
+  $("#delete-data").addEventListener("click", () => ($("#delete-confirm").hidden = false));
+  $("#delete-no").addEventListener("click", () => ($("#delete-confirm").hidden = true));
+  $("#delete-yes").addEventListener("click", () => {
+    state = { examples: false, entries: [] }; persist();
+    $("#delete-confirm").hidden = true; $("#data-out").hidden = true; renderHistory(); toast("All check-ins deleted");
+  });
+  document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => {
+    const v = b.getAttribute("data-copy");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(() => toast("Copied " + v), () => toast("Number: " + v));
+    else toast("Number: " + v);
+  }));
+
+  // ---------- routing ----------
+  const VIEWS = ["home", "checkin", "history", "help"];
+  function route() {
+    const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "home";
+    VIEWS.forEach((n) => ($("#view-" + n).hidden = n !== v));
+    document.querySelectorAll("[data-nav]").forEach((a) => { if (a.dataset.nav === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    if (v === "checkin") loadForm();
+    if (v === "history") renderHistory();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
