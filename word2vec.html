@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Explorer — Steady</title>
+<meta name="description" content="Type a word, see its 10 closest words in a word2vec model trained on Wikipedia, and explore them in 3D.">
+<meta name="theme-color" content="#1f5c58">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f6dfb4'/%3E%3Ccircle cx='16' cy='16' r='10' fill='%23e9a23b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #e9f1ec;
+  --surface: #f7faf8;
+  --ink: #1d2b2a;
+  --body: #3e4f4d;
+  --soft: #4b5c5a;
+  --muted: #5b6b69;
+  --line: #d3e0da;
+  --card-line: #c9d9d2;
+  --teal: #1f5c58;
+  --teal-deep: #174845;
+  --teal-line: #a9c4bb;
+  --teal-soft: #d6e7e1;
+  --sun: #e9a23b;
+  --sun-halo: #f6dfb4;
+  --care: #9a3a24;
+  --care-line: #b5482f;
+  --on-teal: #ffffff;
+  --stage-top: #f9e9cc;
+  --stage-mid: #f4efe0;
+  --stage-low: #e9f1ec;
+  --serif: "Young Serif", Georgia, "Times New Roman", serif;
+  --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101819; --surface: #172224; --ink: #e4eeec; --body: #c3d2cf; --soft: #a9bbb8;
+    --muted: #9baeab; --line: #2a3b3e; --card-line: #2f4245; --teal: #72c3b7; --teal-deep: #174845;
+    --teal-line: #3e6b66; --teal-soft: #1e3533; --sun: #f0b357; --sun-halo: #4a3a22;
+    --care: #f0a196; --care-line: #c9705f; --on-teal: #0e1a1b;
+    --stage-top: #2b2924; --stage-mid: #1d2526; --stage-low: #141e1f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101819; --surface: #172224; --ink: #e4eeec; --body: #c3d2cf; --soft: #a9bbb8;
+  --muted: #9baeab; --line: #2a3b3e; --card-line: #2f4245; --teal: #72c3b7; --teal-deep: #174845;
+  --teal-line: #3e6b66; --teal-soft: #1e3533; --sun: #f0b357; --sun-halo: #4a3a22;
+  --care: #f0a196; --care-line: #c9705f; --on-teal: #0e1a1b;
+  --stage-top: #2b2924; --stage-mid: #1d2526; --stage-low: #141e1f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 8px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: 48px; padding-right: 48px; }
+
+/* Top bar (shared with landing) */
+.topbar { border-bottom: 1px solid var(--line); }
+.topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; padding-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-sun { width: 22px; height: 22px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 4px var(--sun-halo); flex: none; }
+.brand-name { font-family: var(--serif); font-size: 22px; }
+.nav { display: flex; align-items: center; gap: 28px; font-size: 15px; font-weight: 500; }
+.nav a { color: var(--muted); padding-bottom: 4px; border-bottom: 2px solid transparent; }
+.nav a:hover { color: var(--teal); }
+.nav a[aria-current="page"] { color: var(--teal); border-bottom-color: var(--teal); }
+.nav .help { padding: 8px 14px; border: 1.5px solid var(--care-line); color: var(--care); border-radius: 999px; font-weight: 600; }
+
+/* Intro */
+.intro { padding-top: 56px; padding-bottom: 28px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: end; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.3rem, 4.6vw, 56px); line-height: 1.05; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.lede { font-size: 18px; line-height: 1.55; color: var(--body); margin: 0; max-width: 520px; }
+
+/* Search card */
+.panel { background: var(--surface); border-radius: 22px; padding: 26px; }
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); margin-bottom: 18px; }
+.tab { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--teal); color: var(--on-teal); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.field { flex: 1 1 220px; min-width: 0; height: 52px; border-radius: 999px; border: 1.5px solid var(--card-line); background: var(--bg); color: var(--ink);
+  font: inherit; font-size: 18px; padding: 0 22px; }
+.field:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 18%, transparent); }
+.field.small { flex: 1 1 110px; font-size: 16px; padding: 0 18px; }
+.op { font-family: var(--serif); font-size: 26px; color: var(--muted); width: 18px; text-align: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: 52px; padding: 0 26px; border-radius: 999px; font: inherit; font-weight: 600; font-size: 16px; border: 0; cursor: pointer; transition: transform .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: .5; cursor: progress; transform: none; }
+.btn-primary { background: var(--teal); color: var(--on-teal); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+.chips-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.chip { border: 1px solid var(--card-line); background: transparent; color: var(--teal); font: inherit; font-size: 14px; font-weight: 500; padding: 7px 13px; border-radius: 999px; cursor: pointer; }
+.chip:hover { background: color-mix(in srgb, var(--teal) 8%, transparent); }
+.status { margin-top: 14px; font-size: 14px; color: var(--muted); min-height: 21px; }
+.status.err { color: var(--care); }
+.status button { border: 0; background: none; padding: 0; font: inherit; color: var(--teal); text-decoration: underline; cursor: pointer; }
+
+/* Results layout */
+.results { display: grid; grid-template-columns: 360px 1fr; gap: 24px; padding-top: 8px; padding-bottom: 56px; align-items: start; }
+.card { background: var(--surface); border-radius: 22px; padding: 24px; }
+.card h2 { font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.15; margin: 0 0 4px; overflow-wrap: anywhere; }
+.card .sub { font-size: 14px; color: var(--muted); margin: 0 0 16px; }
+.nn { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.nn button { width: 100%; display: grid; grid-template-columns: 24px 1fr 52px; gap: 10px; align-items: center; text-align: left; border: 0; background: none; font: inherit; color: inherit;
+  padding: 9px 10px; border-radius: 12px; cursor: pointer; }
+.nn button:hover, .nn button.hot { background: color-mix(in srgb, var(--teal) 9%, transparent); }
+.nn .rank { font-family: var(--serif); color: var(--sun); font-size: 17px; }
+.nn .w { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.nn .bar { display: block; height: 5px; border-radius: 3px; background: var(--line); margin-top: 5px; overflow: hidden; }
+.nn .bar i { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
+.nn .s { font-family: var(--mono); font-size: 13px; color: var(--muted); text-align: right; }
+.empty { color: var(--muted); font-size: 15px; padding: 8px 0; }
+
+/* 3D stage */
+.stage-card { padding: 0; overflow: hidden; }
+.stage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 0; flex-wrap: wrap; }
+.stage-head h2 { font-size: 22px; }
+.toggles { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--soft); }
+.toggles label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.toggles input { accent-color: var(--teal); width: 16px; height: 16px; }
+.stage { position: relative; height: 520px; margin: 14px 0 0; background: linear-gradient(var(--stage-top) 0%, var(--stage-mid) 45%, var(--stage-low) 100%); touch-action: none; cursor: grab; }
+.stage:active { cursor: grabbing; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage-hint { position: absolute; left: 16px; bottom: 14px; max-width: calc(100% - 160px); font-size: 13px; color: var(--muted); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 5px 10px; border-radius: 999px; pointer-events: none; }
+.stage-ctrl { position: absolute; right: 14px; bottom: 12px; display: flex; gap: 6px; }
+.stage-ctrl button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--card-line); background: var(--surface); color: var(--teal); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; padding: 14px 24px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+/* About */
+.about { padding-bottom: 64px; }
+.about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.fact { border: 1px solid var(--card-line); border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+.fact h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.fact p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--soft); }
+.fact code { font-family: var(--mono); font-size: 13px; background: var(--surface); padding: 1px 6px; border-radius: 6px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+.stat { background: var(--surface); border-radius: 18px; padding: 20px 22px; }
+.stat b { display: block; font-family: var(--serif); font-weight: 400; font-size: 30px; color: var(--teal); line-height: 1.1; }
+.stat span { font-size: 14px; color: var(--muted); }
+
+.footer { border-top: 1px solid var(--line); }
+.footer .wrap { padding-top: 22px; padding-bottom: 22px; font-size: 13px; line-height: 1.5; color: var(--muted); display: flex; justify-content: space-between; gap: 24px; }
+.footer .crisis { color: var(--care); font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 980px) {
+  .intro { grid-template-columns: 1fr; gap: 20px; align-items: start; }
+  .results { grid-template-columns: 1fr; }
+  .stage { height: 440px; }
+  .about-grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .wrap { padding-left: 16px; padding-right: 16px; }
+  .topbar .wrap { flex-wrap: wrap; padding-top: 16px; padding-bottom: 16px; }
+  .nav { gap: 18px; font-size: 14px; flex-wrap: wrap; }
+  .nav .page-link { display: none; }
+  .intro { padding-top: 36px; }
+  .panel, .card { padding: 20px; border-radius: 20px; }
+  .stage-card { padding: 0; }
+  .stage-head { padding: 18px 18px 0; }
+  .legend { padding: 12px 18px 18px; }
+  .stage { height: 380px; }
+  .stage-hint { display: none; }
+  .row .btn { flex: 1 1 100%; }
+  .footer .wrap { flex-direction: column; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Steady home">
+      <span class="brand-sun" aria-hidden="true"></span>
+      <span class="brand-name">Steady</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a class="page-link" href="/">Home</a>
+      <a class="page-link" href="steady.html#checkin">Check in</a>
+      <a class="page-link" href="steady.html#history">My patterns</a>
+      <a href="word2vec.html" aria-current="page">Word explorer</a>
+      <a class="help" href="steady.html#help">Need help now?</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="wrap intro" aria-labelledby="page-h">
+    <div>
+      <p class="eyebrow">NLP · word2vec</p>
+      <h1 id="page-h">See which words live close together.</h1>
+    </div>
+    <p class="lede">A skip-gram word2vec model trained on 17 million words of Wikipedia. Type a word to get its ten nearest neighbors by cosine similarity, then turn them around in 3D.</p>
+  </section>
+
+  <section class="wrap" aria-label="Query">
+    <div class="panel">
+      <div class="tabs" role="tablist" aria-label="Mode">
+        <button class="tab" role="tab" id="tab-nn" aria-selected="true" aria-controls="form-nn">Nearest words</button>
+        <button class="tab" role="tab" id="tab-an" aria-selected="false" aria-controls="form-an">Analogy</button>
+      </div>
+
+      <form id="form-nn" role="tabpanel" aria-labelledby="tab-nn" autocomplete="off">
+        <div class="row">
+          <input class="field" id="q" name="q" type="text" placeholder="Try a word, like ocean" spellcheck="false" autocapitalize="none" list="vocab-list" aria-label="Word">
+          <button class="btn btn-primary" id="go" type="submit" disabled>Find 10 closest</button>
+        </div>
+        <div class="chips" id="chips-nn"><span class="chips-label">Try</span></div>
+      </form>
+
+      <form id="form-an" role="tabpanel" aria-labelledby="tab-an" autocomplete="off" hidden>
+        <div class="row">
+          <input class="field small" id="a1" type="text" placeholder="king" spellcheck="false" autocapitalize="none" list="vocab-list" aria-label="Start word">
+          <span class="op" aria-hidden="true">−</span>
+          <input class="field small" id="a2" type="text" placeholder="man" spellcheck="false" autocapitalize="none" list="vocab-list" aria-label="Word to subtract">
+          <span class="op" aria-hidden="true">+</span>
+          <input class="field small" id="a3" type="text" placeholder="woman" spellcheck="false" autocapitalize="none" list="vocab-list" aria-label="Word to add">
+          <button class="btn btn-primary" id="go-an" type="submit" disabled>Solve</button>
+        </div>
+        <div class="chips" id="chips-an"><span class="chips-label">Try</span></div>
+      </form>
+
+      <p class="status" id="status" role="status" aria-live="polite">Loading the model…</p>
+      <datalist id="vocab-list"></datalist>
+    </div>
+  </section>
+
+  <section class="wrap results" aria-label="Results">
+    <div class="card">
+      <h2 id="res-h">Nearest words</h2>
+      <p class="sub" id="res-sub">Your results will appear here.</p>
+      <ol class="nn" id="nn"></ol>
+    </div>
+
+    <div class="card stage-card">
+      <div class="stage-head">
+        <div>
+          <h2>3D view</h2>
+          <p class="sub" id="pca-sub" style="margin:0">The 100-dimensional vectors, squeezed into 3D with PCA.</p>
+        </div>
+        <div class="toggles">
+          <label><input type="checkbox" id="opt-ctx"> Neighbors of neighbors</label>
+          <label><input type="checkbox" id="opt-spin" checked> Auto-rotate</label>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" aria-label="3D scatter plot of the query word and its nearest neighbors" role="img"></canvas>
+        <span class="stage-hint" id="hint">Drag to rotate · scroll to zoom · click a word to explore it</span>
+        <div class="stage-ctrl">
+          <button type="button" id="zin" aria-label="Zoom in">+</button>
+          <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zreset" aria-label="Reset view">⟲</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--sun)"></i>Your word</span>
+        <span><i class="dot" style="background:var(--teal)"></i>10 closest (darker = more similar)</span>
+        <span id="lg-an" hidden><i class="dot" style="background:var(--care)"></i>Analogy inputs</span>
+        <span id="lg-ctx" hidden><i class="dot" style="background:var(--teal-line)"></i>Their neighbors</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap about" aria-labelledby="about-h">
+    <h2 class="eyebrow" id="about-h">About this model</h2>
+    <div class="stats" id="stats">
+      <div class="stat"><b id="st-vocab">—</b><span>words you can search</span></div>
+      <div class="stat"><b id="st-dim">—</b><span>dimensions per word</span></div>
+      <div class="stat"><b id="st-tokens">17M</b><span>training tokens (text8)</span></div>
+      <div class="stat"><b id="st-win">—</b><span>context window</span></div>
+    </div>
+    <div class="about-grid">
+      <div class="fact"><h3>How it was trained</h3><p id="about-train">Skip-gram with negative sampling (gensim) on <code>text8</code>, a cleaned 100 MB slice of English Wikipedia. The model learns to predict the words around each word, so words used in similar contexts end up with similar vectors.</p></div>
+      <div class="fact"><h3>How "closest" works</h3><p>Every word is a vector. Closeness is <b>cosine similarity</b>: the cosine of the angle between two vectors, from −1 to 1. The page compares your word against every word in the vocabulary, right in your browser, and keeps the top ten.</p></div>
+      <div class="fact"><h3>How the 3D view works</h3><p><b>PCA</b> finds the three directions along which the shown words differ most and projects them onto those axes. It's a squashed view of 100 dimensions, so the percent of variance kept tells you how faithful the picture is.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Steady is a self-reflection tool. It does not diagnose, treat, or replace a licensed professional.</span>
+    <a class="crisis" href="tel:988">In crisis? Call or text 988</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+  const SUGGEST = ["king", "ocean", "computer", "paris", "music", "happy", "dog", "einstein", "river", "democracy"];
+  const ANALOGIES = [["king", "man", "woman"], ["paris", "france", "germany"], ["father", "man", "woman"], ["greatest", "great", "good"], ["mozart", "music", "painting"], ["cars", "car", "house"]];
+
+  let words = [], index = new Map(), V = null, norms = null, dim = 0, meta = null;
+
+  function setStatus(msg, isErr) {
+    statusEl.classList.toggle("err", !!isErr);
+    statusEl.textContent = "";
+    if (typeof msg === "string") statusEl.textContent = msg; else statusEl.append(...msg);
+  }
+
+  // ---------- Model ----------
+  async function load() {
+    try {
+      const [mRes, vRes] = await Promise.all([fetch("model/meta.json"), fetch("model/vectors.bin")]);
+      if (!mRes.ok || !vRes.ok) throw new Error("HTTP " + (mRes.ok ? vRes.status : mRes.status));
+      meta = await mRes.json();
+      const buf = await vRes.arrayBuffer();
+      words = meta.words; dim = meta.dim;
+      V = new Int8Array(buf);
+      if (V.length !== words.length * dim) throw new Error("vector file size mismatch");
+      norms = new Float32Array(words.length);
+      for (let i = 0; i < words.length; i++) {
+        let s = 0; const o = i * dim;
+        for (let k = 0; k < dim; k++) s += V[o + k] * V[o + k];
+        norms[i] = Math.sqrt(s) || 1;
+        index.set(words[i], i);
+      }
+      fillAbout();
+      fillDatalist();
+      $("go").disabled = false; $("go-an").disabled = false;
+      setStatus(`Model loaded · ${words.length.toLocaleString()} words · ${dim} dimensions.`);
+      const fromHash = decodeURIComponent(location.hash.slice(1)).trim().toLowerCase();
+      runNeighbors(fromHash && index.has(fromHash) ? fromHash : "king", false);
+    } catch (e) {
+      console.error(e);
+      setStatus("Couldn't load the model files (model/meta.json, model/vectors.bin). If you opened this file directly, serve the folder over http instead.", true);
+    }
+  }
+
+  function fillAbout() {
+    $("st-vocab").textContent = words.length.toLocaleString();
+    $("st-dim").textContent = dim;
+    if (meta.settings && meta.settings.window) $("st-win").textContent = "±" + meta.settings.window;
+    const s = meta.settings || {};
+    $("about-train").innerHTML = `Skip-gram with negative sampling (gensim) on <code>text8</code>, a cleaned 100 MB slice of English Wikipedia. Settings: <code>dim=${s.vector_size}</code>, <code>window=${s.window}</code>, <code>negative=${s.negative}</code>, <code>min_count=${s.min_count}</code>, <code>epochs=${s.epochs}</code>. The full model learned ${Number(meta.full_vocab).toLocaleString()} words; the ${words.length.toLocaleString()} most frequent ship with this page.`;
+  }
+
+  function fillDatalist() {
+    // A datalist of the 3,000 most common words gives light autocomplete without bloating the DOM.
+    const dl = $("vocab-list"); const frag = document.createDocumentFragment();
+    for (let i = 0; i < Math.min(3000, words.length); i++) { const o = document.createElement("option"); o.value = words[i]; frag.appendChild(o); }
+    dl.appendChild(frag);
+  }
+
+  function vecOf(i) { // unit float vector
+    const out = new Float32Array(dim), o = i * dim, n = norms[i];
+    for (let k = 0; k < dim; k++) out[k] = V[o + k] / n;
+    return out;
+  }
+
+  function nearest(q, k, exclude) { // q: unit Float32Array
+    const best = []; // [sim, idx], kept sorted descending, length <= k
+    for (let i = 0; i < words.length; i++) {
+      if (exclude.has(i)) continue;
+      let s = 0; const o = i * dim;
+      for (let d = 0; d < dim; d++) s += q[d] * V[o + d];
+      s /= norms[i];
+      if (best.length < k || s > best[best.length - 1][0]) {
+        let j = best.length < k ? best.length : k - 1;
+        while (j > 0 && best[j - 1][0] < s) { best[j] = best[j - 1]; j--; }
+        best[j] = [s, i];
+      }
+    }
+    return best.map(([s, i]) => ({ i, w: words[i], s }));
+  }
+
+  function lookup(raw) {
+    const w = raw.trim().toLowerCase();
+    if (!w) return { w, i: -1 };
+    return { w, i: index.has(w) ? index.get(w) : -1 };
+  }
+
+  function unknown(w) {
+    const pre = w.slice(0, Math.max(2, Math.min(4, w.length - 1)));
+    const close = words.filter((x) => x.startsWith(pre)).slice(0, 6);
+    const parts = [`"${w}" isn't in the ${words.length.toLocaleString()}-word vocabulary (it's lowercase Wikipedia text, no punctuation or digits).`];
+    if (close.length) {
+      parts.push(" Did you mean ");
+      close.forEach((c, n) => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = c;
+        b.onclick = () => runNeighbors(c, true);
+        parts.push(b, n < close.length - 1 ? ", " : "?");
+      });
+    }
+    setStatus(parts, true);
+  }
+
+  // ---------- Queries ----------
+  function runNeighbors(raw, push) {
+    if (!V) return;
+    const { w, i } = lookup(raw);
+    if (!w) return;
+    $("q").value = w;
+    if (i < 0) return unknown(w);
+    const t0 = performance.now();
+    const res = nearest(vecOf(i), 10, new Set([i]));
+    const ms = Math.round(performance.now() - t0);
+    setStatus(`Compared "${w}" with ${words.length.toLocaleString()} words in ${ms} ms.`);
+    $("res-h").textContent = w;
+    $("res-sub").textContent = `Word #${(i + 1).toLocaleString()} by frequency · its 10 nearest neighbors`;
+    renderList(res);
+    buildScene({ label: w, vec: vecOf(i) }, res, [i]);
+    if (push) history.replaceState(null, "", "#" + encodeURIComponent(w));
+  }
+
+  function runAnalogy(a, b, c) {
+    if (!V) return;
+    const A = lookup(a), B = lookup(b), C = lookup(c);
+    for (const x of [A, B, C]) { if (!x.w) return setStatus("Fill in all three words.", true); if (x.i < 0) return unknown(x.w); }
+    $("a1").value = A.w; $("a2").value = B.w; $("a3").value = C.w;
+    const va = vecOf(A.i), vb = vecOf(B.i), vc = vecOf(C.i), q = new Float32Array(dim);
+    let n = 0;
+    for (let k = 0; k < dim; k++) { q[k] = va[k] - vb[k] + vc[k]; n += q[k] * q[k]; }
+    n = Math.sqrt(n) || 1; for (let k = 0; k < dim; k++) q[k] /= n;
+    const res = nearest(q, 10, new Set([A.i, B.i, C.i]));
+    const label = `${A.w} − ${B.w} + ${C.w}`;
+    setStatus(["Best answer: ", Object.assign(document.createElement("b"), { textContent: res[0].w }), ` (cosine ${res[0].s.toFixed(3)}).`]);
+    $("res-h").textContent = label;
+    $("res-sub").textContent = "Words closest to the vector arithmetic result";
+    renderList(res);
+    buildScene({ label: "= ?", vec: q }, res, [], [A, B, C].map((x) => ({ w: x.w, vec: vecOf(x.i) })));
+  }
+
+  function renderList(res) {
+    const ol = $("nn"); ol.innerHTML = "";
+    const max = res[0] ? res[0].s : 1;
+    res.forEach((r, n) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button"); b.type = "button"; b.dataset.w = r.w;
+      b.innerHTML = `<span class="rank">${n + 1}</span><span><span class="w"></span><span class="bar"><i style="width:${Math.max(4, (r.s / max) * 100).toFixed(1)}%"></i></span></span><span class="s">${r.s.toFixed(3)}</span>`;
+      b.querySelector(".w").textContent = r.w;
+      b.title = `Explore "${r.w}"`;
+      b.onclick = () => { selectTab("nn"); runNeighbors(r.w, true); };
+      b.onmouseenter = () => { hoverWord = r.w; };
+      b.onmouseleave = () => { hoverWord = null; };
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
+
+  // ---------- PCA (via the small Gram matrix) ----------
+  function pca3(vecs) {
+    const n = vecs.length, d = vecs[0].length, mean = new Float32Array(d);
+    for (const v of vecs) for (let k = 0; k < d; k++) mean[k] += v[k] / n;
+    const X = vecs.map((v) => v.map((x, k) => x - mean[k]));
+    const G = Array.from({ length: n }, (_, i) => new Float64Array(n));
+    for (let i = 0; i < n; i++) for (let j = i; j < n; j++) {
+      let s = 0; for (let k = 0; k < d; k++) s += X[i][k] * X[j][k];
+      G[i][j] = G[j][i] = s;
+    }
+    let trace = 0; for (let i = 0; i < n; i++) trace += G[i][i];
+    const comps = [], vals = [];
+    for (let c = 0; c < 3; c++) {
+      let u = new Float64Array(n).map((_, i) => Math.sin(i * 12.9898 + c * 78.233) + 1.5);
+      let lam = 0;
+      for (let it = 0; it < 300; it++) {
+        const w = new Float64Array(n);
+        for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += G[i][j] * u[j]; w[i] = s; }
+        for (const p of comps) { let dp = 0; for (let i = 0; i < n; i++) dp += w[i] * p[i]; for (let i = 0; i < n; i++) w[i] -= dp * p[i]; }
+        let nn = 0; for (let i = 0; i < n; i++) nn += w[i] * w[i]; nn = Math.sqrt(nn);
+        if (nn < 1e-12) break;
+        lam = nn; for (let i = 0; i < n; i++) w[i] /= nn; u = w;
+      }
+      comps.push(u); vals.push(lam);
+    }
+    const coords = Array.from({ length: n }, (_, i) => comps.map((u, c) => u[i] * Math.sqrt(Math.max(vals[c], 0))));
+    let r = 0; for (const p of coords) r = Math.max(r, Math.hypot(...p));
+    const scaled = coords.map((p) => p.map((x) => x / (r || 1)));
+    return { coords: scaled, explained: vals.map((v) => (trace ? v / trace : 0)) };
+  }
+
+  // ---------- 3D scene ----------
+  const cv = $("cv"), ctx = cv.getContext("2d"), stage = $("stage");
+  let pts = [], edges = [], yaw = 0.6, pitch = -0.35, zoom = 1, spin = true, hoverWord = null, mouse = null, lastScene = null;
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduceMotion) { spin = false; $("opt-spin").checked = false; }
+
+  function buildScene(center, res, excludeIdx, extras = []) {
+    lastScene = { center, res, excludeIdx, extras };
+    const items = [{ w: center.label, vec: center.vec, kind: "q", s: 1 }];
+    extras.forEach((e) => items.push({ w: e.w, vec: e.vec, kind: "x", s: 0 }));
+    res.forEach((r) => items.push({ w: r.w, vec: vecOf(r.i), kind: "n", s: r.s }));
+    if ($("opt-ctx").checked) {
+      const seen = new Set([...excludeIdx, ...res.map((r) => r.i)]);
+      res.forEach((r, n) => {
+        const sub = nearest(vecOf(r.i), 4, seen);
+        sub.forEach((x) => { seen.add(x.i); items.push({ w: x.w, vec: vecOf(x.i), kind: "c", s: x.s, parent: 1 + extras.length + n }); });
+      });
+    }
+    const { coords, explained } = pca3(items.map((x) => x.vec));
+    // Re-center on the query word so rotation pivots around it, then fit to the unit sphere.
+    const c0 = coords[0];
+    let rad = 0; const shifted = coords.map((p) => { const q = p.map((x, k) => x - c0[k]); rad = Math.max(rad, Math.hypot(...q)); return q; });
+    pts = items.map((x, i) => ({ ...x, p: shifted[i].map((v) => v / (rad || 1)) }));
+    edges = [];
+    pts.forEach((x, i) => {
+      if (x.kind === "n") edges.push([0, i, x.s]);
+      if (x.kind === "c") edges.push([x.parent, i, 0]);
+      if (x.kind === "x") edges.push([0, i, -1]);
+    });
+    const tot = explained.reduce((a, b) => a + b, 0);
+    $("pca-sub").textContent = `PCA over ${pts.length} words · PC1 ${(explained[0] * 100).toFixed(0)}%, PC2 ${(explained[1] * 100).toFixed(0)}%, PC3 ${(explained[2] * 100).toFixed(0)}% · ${(tot * 100).toFixed(0)}% of variance kept`;
+    $("lg-ctx").hidden = !$("opt-ctx").checked;
+    $("lg-an").hidden = !extras.length;
+    if (!spin) draw();
+  }
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function resize() {
+    const r = stage.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function project(p, W, H) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const x1 = p[0] * cy + p[2] * sy, z1 = -p[0] * sy + p[2] * cy;
+    const y2 = p[1] * cp - z1 * sp, z2 = p[1] * sp + z1 * cp;
+    const camera = 3.2, f = camera / (camera - z2);
+    const scale = Math.min(W, H) * 0.36 * zoom;
+    return { x: W / 2 + x1 * scale * f, y: H / 2 - y2 * scale * f, z: z2, f };
+  }
+
+  function mix(hexA, hexB, t) {
+    const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+    const ch = (s) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
+    return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+  }
+
+  function draw() {
+    const W = cv.clientWidth, H = cv.clientHeight;
+    ctx.clearRect(0, 0, W, H);
+    if (!pts.length) return;
+    const C = { sun: css("--sun"), teal: css("--teal"), tealLine: css("--teal-line"), ink: css("--ink"), muted: css("--muted"), line: css("--line"), surface: css("--surface"), care: css("--care") };
+
+    // axes
+    const o = project([0, 0, 0], W, H);
+    [["PC1", [0.9, 0, 0]], ["PC2", [0, 0.9, 0]], ["PC3", [0, 0, 0.9]]].forEach(([lab, v]) => {
+      const e = project(v, W, H), e2 = project(v.map((x) => -x), W, H);
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.setLineDash([4, 5]);
+      ctx.beginPath(); ctx.moveTo(e2.x, e2.y); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.muted; ctx.font = "600 11px Figtree, system-ui, sans-serif"; ctx.fillText(lab, e.x + 4, e.y - 4);
+    });
+
+    const P = pts.map((x) => ({ ...x, s2: project(x.p, W, H) }));
+    // edges
+    edges.forEach(([a, b, s]) => {
+      const A = P[a].s2, B = P[b].s2;
+      ctx.strokeStyle = s < 0 ? C.care : s > 0 ? C.teal : C.tealLine;
+      ctx.globalAlpha = s > 0 ? 0.25 + 0.4 * s : 0.35; ctx.lineWidth = s > 0 ? 1.5 : 1;
+      if (s < 0) ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); ctx.setLineDash([]);
+    });
+    ctx.globalAlpha = 1;
+
+    // hover detection
+    let hot = null;
+    if (mouse) {
+      let bd = 18;
+      P.forEach((x, i) => { const d = Math.hypot(x.s2.x - mouse.x, x.s2.y - mouse.y); if (d < bd) { bd = d; hot = i; } });
+    }
+    if (hot === null && hoverWord) hot = P.findIndex((x) => x.w === hoverWord && x.kind === "n");
+    stage.dataset.hot = hot !== null && hot >= 0 && P[hot].kind !== "q" ? P[hot].w : "";
+    document.querySelectorAll(".nn button").forEach((b) => b.classList.toggle("hot", hot !== null && hot >= 0 && b.dataset.w === P[hot].w));
+
+    const order = P.map((_, i) => i).sort((a, b) => P[a].s2.z - P[b].s2.z);
+    order.forEach((i) => {
+      const x = P[i], s = x.s2, isHot = i === hot;
+      const depth = Math.max(0.45, Math.min(1, (s.z + 1.2) / 2));
+      let r, fill;
+      if (x.kind === "q") { r = 11; fill = C.sun; }
+      else if (x.kind === "x") { r = 7; fill = C.care; }
+      else if (x.kind === "n") { r = 7; fill = C.teal.startsWith("#") && C.tealLine.startsWith("#") ? mix(C.tealLine, C.teal, Math.min(1, Math.max(0, (x.s - 0.4) / 0.45))) : C.teal; }
+      else { r = 4.5; fill = C.tealLine; }
+      r *= s.f * (isHot ? 1.35 : 1);
+      ctx.globalAlpha = x.kind === "c" ? 0.75 * depth : depth;
+      if (x.kind === "q") { ctx.fillStyle = C.sun; ctx.globalAlpha = 0.18; ctx.beginPath(); ctx.arc(s.x, s.y, r * 2.2, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7); ctx.fill();
+      // label
+      const big = x.kind === "q" || x.kind === "x" || isHot;
+      ctx.font = `${big ? 700 : x.kind === "c" ? 500 : 600} ${big ? 15 : x.kind === "c" ? 11.5 : 13.5}px Figtree, system-ui, sans-serif`;
+      const label = x.kind === "n" && isHot ? `${x.w}  ${x.s.toFixed(3)}` : x.w;
+      const tx = s.x + r + 5, ty = s.y + 4;
+      ctx.lineWidth = 3.5; ctx.strokeStyle = C.surface; ctx.globalAlpha = Math.min(1, depth + 0.1) * (x.kind === "c" ? 0.8 : 1);
+      ctx.strokeText(label, tx, ty);
+      ctx.fillStyle = x.kind === "c" ? C.muted : C.ink; ctx.fillText(label, tx, ty);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function loop() { if (spin && !dragging) { yaw += 0.0045; draw(); } requestAnimationFrame(loop); }
+
+  // interaction
+  let dragging = false, last = null, moved = 0;
+  stage.addEventListener("pointerdown", (e) => { if (e.target.closest(".stage-ctrl")) return; dragging = true; moved = 0; last = [e.clientX, e.clientY]; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", (e) => {
+    const r = cv.getBoundingClientRect(); mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+    if (dragging) {
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; moved += Math.abs(dx) + Math.abs(dy);
+      yaw += dx * 0.008; pitch = Math.max(-1.5, Math.min(1.5, pitch + dy * 0.008)); last = [e.clientX, e.clientY];
+    }
+    draw();
+  });
+  stage.addEventListener("pointerup", (e) => {
+    dragging = false;
+    if (moved < 5 && stage.dataset.hot) { const w = stage.dataset.hot; if (index.has(w)) { selectTab("nn"); runNeighbors(w, true); } }
+  });
+  stage.addEventListener("pointerleave", () => { mouse = null; dragging = false; draw(); });
+  stage.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(0.4, Math.min(4, zoom * Math.exp(-e.deltaY * 0.0015))); draw(); }, { passive: false });
+  $("zin").onclick = () => { zoom = Math.min(4, zoom * 1.2); draw(); };
+  $("zout").onclick = () => { zoom = Math.max(0.4, zoom / 1.2); draw(); };
+  $("zreset").onclick = () => { zoom = 1; yaw = 0.6; pitch = -0.35; draw(); };
+  $("opt-spin").onchange = (e) => { spin = e.target.checked; draw(); };
+  $("opt-ctx").onchange = () => { if (lastScene) buildScene(lastScene.center, lastScene.res, lastScene.excludeIdx, lastScene.extras); };
+  new ResizeObserver(resize).observe(stage);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+
+  // ---------- UI wiring ----------
+  function selectTab(which) {
+    const nn = which === "nn";
+    $("tab-nn").setAttribute("aria-selected", nn); $("tab-an").setAttribute("aria-selected", !nn);
+    $("form-nn").hidden = !nn; $("form-an").hidden = nn;
+  }
+  $("tab-nn").onclick = () => selectTab("nn");
+  $("tab-an").onclick = () => selectTab("an");
+  $("form-nn").onsubmit = (e) => { e.preventDefault(); runNeighbors($("q").value, true); };
+  $("form-an").onsubmit = (e) => { e.preventDefault(); runAnalogy($("a1").value || "king", $("a2").value || "man", $("a3").value || "woman"); };
+  SUGGEST.forEach((w) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = w; b.onclick = () => runNeighbors(w, true); $("chips-nn").appendChild(b); });
+  ANALOGIES.forEach(([a, b, c]) => { const x = document.createElement("button"); x.type = "button"; x.className = "chip"; x.textContent = `${a} − ${b} + ${c}`; x.onclick = () => runAnalogy(a, b, c); $("chips-an").appendChild(x); });
+
+  resize();
+  requestAnimationFrame(loop);
+  load();
+})();
+</script>
+</body>
+</html>

@@ -107,6 +107,14 @@ h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.6rem, 5.4vw
 .promise { border: 1px solid var(--card-line); border-radius: 18px; padding: 24px 26px; display: flex; flex-direction: column; gap: 6px; }
 .promise h3 { font-size: 17px; }
 
+.explore { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 26px 28px; border-radius: 18px; background: var(--teal-deep); color: #e9f1ec; transition: transform .15s ease; }
+.explore:hover { transform: translateY(-2px); }
+.explore-copy { display: flex; flex-direction: column; gap: 6px; }
+.explore-tag { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #f6dfb4; }
+.explore-title { font-family: var(--serif); font-size: 26px; line-height: 1.15; }
+.explore-text { font-size: 15px; line-height: 1.5; color: #c9dcd5; max-width: 620px; }
+.explore-go { flex: none; background: #e9a23b; color: #1d2b2a; padding: 13px 22px; border-radius: 999px; font-weight: 600; }
+
 /* Footer */
 .footer { border-top: 1px solid var(--line); }
 .footer .wrap { padding-top: 22px; padding-bottom: 22px; font-size: 13px; line-height: 1.5; color: var(--muted); display: flex; justify-content: space-between; gap: 24px; }
@@ -129,6 +137,7 @@ h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.6rem, 5.4vw
   .horizon { height: 260px; border-radius: 20px; }
   .horizon .sun { width: 120px; height: 120px; margin-left: -60px; box-shadow: 0 0 0 18px rgba(233,162,59,.18), 0 0 0 42px rgba(233,162,59,.08); }
   .promises { grid-template-columns: 1fr; }
+  .explore { flex-direction: column; align-items: flex-start; padding: 22px; }
   .footer .wrap { flex-direction: column; gap: 10px; }
 }
 </style>
@@ -145,6 +154,7 @@ h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.6rem, 5.4vw
       <a class="page-link" href="/" aria-current="page">Home</a>
       <a class="page-link" href="steady.html#checkin">Check in</a>
       <a class="page-link" href="steady.html#history">My patterns</a>
+      <a href="word2vec.html">Word explorer</a>
       <a class="help" href="steady.html#help">Need help now?</a>
     </nav>
   </div>
@@ -179,6 +189,14 @@ h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.6rem, 5.4vw
       <div class="promise"><h3>Private by default</h3><p>Your check-ins stay in your browser. Copy or delete everything anytime.</p></div>
       <div class="promise"><h3>Gentle, not pushy</h3><p>No streaks, no guilt for missed days. Come back when it helps.</p></div>
     </div>
+    <a class="explore" href="word2vec.html">
+      <span class="explore-copy">
+        <span class="explore-tag">New · NLP lab</span>
+        <span class="explore-title">Word explorer</span>
+        <span class="explore-text">Type a word and see the 10 closest words from a word2vec model trained on Wikipedia, then rotate them in 3D.</span>
+      </span>
+      <span class="explore-go" aria-hidden="true">Open →</span>
+    </a>
   </section>
 </main>
 
